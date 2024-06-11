@@ -327,41 +327,41 @@ for index, row in vlan_data.iterrows():
 
 
 def send_configuration_to_switch(config, port=None, baudrate=9600):
-try:
-    # Open serial connection
-    # Print the generated configuration and ask for approval
-    print("\nGenerated Configuration:\n")
-    print(config)
+    try:
+        # Open serial connection
+        # Print the generated configuration and ask for approval
+        print("\nGenerated Configuration:\n")
+        print(config)
+        
+        approval = input("\nDo you approve this configuration? (yes/no): ")
+        if approval.lower() != 'yes':
+            print("Configuration upload aborted.")
+        return
     
-    approval = input("\nDo you approve this configuration? (yes/no): ")
-    if approval.lower() != 'yes':
-        print("Configuration upload aborted.")
-    return
-
-    print("\nProvisioning switch...")
-    with serial.Serial(port, baudrate, timeout=1) as ser:
-        print("Connecting to the switch...")
-        ser.write(b'\r\n')  # Wake up the console
-        time.sleep(1)
-        ser.write(b'enable\r\n')
-        time.sleep(1)
-        ser.write(b'configure terminal\r\n')
-        time.sleep(1)
-        for line in config.split('\n'):
-            ser.write(line.encode('utf-8') + b'\r\n')
-            time.sleep(0.1)  # Adjust this if needed to avoid overruns
-        ser.write(b'end\r\n')
-        ser.write(b'write memory\r\n')
-        print("Configuration applied successfully.")
-except serial.SerialException as e:
-    print(f"Error: {e}")
+        print("\nProvisioning switch...")
+        with serial.Serial(port, baudrate, timeout=1) as ser:
+            print("Connecting to the switch...")
+            ser.write(b'\r\n')  # Wake up the console
+            time.sleep(1)
+            ser.write(b'enable\r\n')
+            time.sleep(1)
+            ser.write(b'configure terminal\r\n')
+            time.sleep(1)
+            for line in config.split('\n'):
+                ser.write(line.encode('utf-8') + b'\r\n')
+                time.sleep(0.1)  # Adjust this if needed to avoid overruns
+            ser.write(b'end\r\n')
+            ser.write(b'write memory\r\n')
+            print("Configuration applied successfully.")
+    except serial.SerialException as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
 hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key  = prompt_user()
-try:
-    csv_filepath = find_csv_file(hostname)
-    vlan_data = read_csv_file(csv_filepath)
-    config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key vlan_data)
-    send_configuration_to_switch(config, port=port)
-except FileNotFoundError as e:
-    print(f"Error: {e}")
+    try:
+        csv_filepath = find_csv_file(hostname)
+        vlan_data = read_csv_file(csv_filepath)
+        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key vlan_data)
+        send_configuration_to_switch(config, port=port)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
