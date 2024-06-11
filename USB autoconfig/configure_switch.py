@@ -362,7 +362,7 @@ if __name__ == "__main__":
     try:
         csv_filepath = find_csv_file(hostname)
         vlan_data = read_csv_file(csv_filepath)
-        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data)
+        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data)
         send_configuration_to_switch(config, port=port)
     except FileNotFoundError as e:
         print(f"Error: {e}")
