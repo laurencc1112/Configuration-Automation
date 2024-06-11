@@ -321,7 +321,7 @@ for index, row in vlan_data.iterrows():
     # Add interface configurations based on model and stacked
     config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
 
-    return config
+return config
 
 
 
