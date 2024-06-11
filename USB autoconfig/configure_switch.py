@@ -357,7 +357,7 @@ def send_configuration_to_switch(config, port=None, baudrate=9600):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key  = prompt_user()
+    hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key  = prompt_user()
     try:
         csv_filepath = find_csv_file(hostname)
         vlan_data = read_csv_file(csv_filepath)
