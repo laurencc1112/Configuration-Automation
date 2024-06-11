@@ -291,7 +291,8 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
     """
 
 
-   for index, row in vlan_data.iterrows():
+
+for index, row in vlan_data.iterrows():
     vlan_num = row['VLAN']
     description = row['Description']
     network = row['Network']
@@ -315,7 +316,7 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
     config += f"""
     router ospf {ospf_num}
     network {network} {wildcard_mask} area {ospf_num}
-    """
+        """
 
     # Add interface configurations based on model and stacked
     config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
