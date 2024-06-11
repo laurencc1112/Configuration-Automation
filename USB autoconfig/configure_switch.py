@@ -2,7 +2,6 @@ import os
 import serial
 import time
 import pandas as pd
-import ipaddress
 
 def prompt_user():
     hostname = input("Enter the hostname for the switch: ")
@@ -12,16 +11,14 @@ def prompt_user():
     ospf_num = input("Enter the OSPF number: ")
     tacacs_key = input("Enter the TACACS key: ")
     port = input("Enter the serial port (e.g., /dev/cu.usbserial-XXXX): ")
-
-    # Additional inputs
+    model = input("Select the switch model (1. 9500, 2. 9300): ")
+    stacked = input("Is this a stacked switch? (yes/no): ")
     description = input("Enter the description: ")
     first_ptp_address = input("Enter the first point-to-point address: ")
     second_ptp_address = input("Enter the second point-to-point address: ")
     ospf_message_key = input("Enter the OSPF message key: ")
-
-    return (hostname, enable_password, admin_password, loopback_ip, ospf_num, 
-            tacacs_key, port, description, first_ptp_address, 
-            second_ptp_address, ospf_message_key)
+    return (hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
+            model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
 
 def find_csv_file(hostname):
     downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -62,8 +59,90 @@ def cidr_to_subnet_mask(cidr_notation):
     subnet_mask = '.'.join(subnet_octets)
     return subnet_mask
 
+def generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key):
+    if model == "1":  # 9500
+        if stacked.lower() == "yes":
+            return f"""
+            Interface twe1/0/23
+            Desc {description}
+            No switchport
+            Ip address {first_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            No shut
+            Exit
+
+            Int twe2/0/23
+            Desc {description}
+            No switchport
+            Ip address {second_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            Exit
+            """
+        else:
+            return f"""
+            Interface twe1/0/23
+            Desc {description}
+            No switchport
+            Ip address {first_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            No shut
+            Exit
+
+            Int twe1/0/24
+            Desc {description}
+            No switchport
+            Ip address {second_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            Exit
+            """
+    elif model == "2":  # 9300
+        if stacked.lower() == "yes":
+            return f"""
+            Interface twe1/1/1
+            Desc {description}
+            No switchport
+            Ip address {first_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            No shut
+            Exit
+
+            Int twe2/1/1
+            Desc {description}
+            No switchport
+            Ip address {second_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            Exit
+            """
+        else:
+            return f"""
+            Interface twe1/1/1
+            Desc {description}
+            No switchport
+            Ip address {first_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            No shut
+            Exit
+
+            Int twe1/1/2
+            Desc {description}
+            No switchport
+            Ip address {second_ptp_address}
+            Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+            Ip ospf network point-to-point
+            Exit
+            """
+    else:
+        return ""
+
 def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
-                           description, first_ptp_address, second_ptp_address, ospf_message_key):
+                           model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key):
     config = f"""
     hostname {hostname}
     
@@ -136,120 +215,60 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
     aaa authorization commands 1 default group tacacs+ if-authenticated
     aaa authorization commands 15 default group tacacs+ local if-authenticated
     aaa accounting exec default start-stop group tacacs+
+    aaa accounting commands 0 default start-stop group tacacs+
     aaa accounting commands 1 default start-stop group tacacs+
     aaa accounting commands 15 default start-stop group tacacs+
     aaa accounting connection default start-stop group tacacs+
     aaa accounting system default start-stop group tacacs+
-    aaa session-id common
 
-    alias interface add vlan switchport trunk allowed vlan add
-    alias interface remove vlan switchport trunk allowed vlan remove
-    alias exec ct config t
-    alias exec ir sh ip route
-    alias exec ib sh ip int brief
-    alias exec sb sh run | begin
-    alias exec sbb sh run | begin router bgp
-    alias exec si sh run | inc
-    alias exec sr sh run
-    alias exec ss sh interface status
-    alias exec sibs sh ip bgp summary
-    alias exec sib4s show ip bgp vpnv4 all sum
-    alias exec sib4 show ip bgp vpnv4 all
-    alias exec sib6 show ip bgp vpnv6 unicast all
-    alias exec sib6s show ip bgp vpnv6 unicast all sum
-    alias exec smi sh mpls interfaces
-    alias exec smlv sh mpls l2transport vc
+    tacacs server
+    host 128.194.147.13
+    host 128.194.177.4
+    host 128.194.177.5
+    key {tacacs_key}
 
-    banner login ^C
-
-    ########################################################################################
-    #                                                                                      #
-    # This computer system and the data herein are available only for authorized           #
-    # purposes by authorized users. Use for any other purpose is prohibited and may        #
-    # result in disciplinary actions or criminal prosecution against the user. Usage may   #
-    # be subject to security testing and monitoring. There is no expectation of privacy    #
-    # on this system except as otherwise provided by applicable privacy laws. Refer to     #
-    # University SAP 29.01.03.M0.02 Acceptable Use for more information.                   #
-    #                                                                                      #
-    ########################################################################################
-
-    ^C
+    vlan internal allocation policy ascending
     """
-
+    # Add VLAN configuration
+    for _, row in vlan_data.iterrows():
+        config += f"""
+        vlan {row['VLAN']}
+        name {row['Name']}
+        """
     config += f"""
-    Interface twe1/0/23
-    Desc {description}
-    No switchport
-    Ip address {first_ptp_address}
-    Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
-    Ip ospf network point-to-point
-    No shut
-    Exit
-
-    Int twe2/0/23
-    Desc {description}
-    No switchport
-    Ip address {second_ptp_address}
-    Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
-    Ip ospf network point-to-point
-    Exit
+    interface Loopback0
+    description Management Loopback
+    ip address {loopback_ip} 255.255.255.255
+    ip ospf {ospf_num} area 0
     """
 
-    for index, row in vlan_data.iterrows():
-        vlan_num = row['VLAN']
-        description = row['Description']
-        network = row['Network']
-        gateway = row['Gateway']
-        size = row['New Network Size']
-        subnet_mask = generate_subnet_mask(size)
-        wildcard_mask = generate_wildcard_mask(size)
-        config += f"""
-        vlan {vlan_num}
-         name {description}
-        !
-        interface Vlan{vlan_num}
-         description {description}
-         ip address {gateway} {subnet_mask}
-         ip helper-address 165.91.16.135
-         ip helper-address 128.194.211.237
-         shutdown
-        exit
-        !
-        """
-        config += f"""
-        router ospf {ospf_num}
-        network {network} {wildcard_mask} area {ospf_num}
-        """
+    # Add interface configurations based on model and stacked
+    config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
+
     return config
 
-def send_configuration_to_switch(config, port=None, baudrate=9600):
-    try:
-        # Open serial connection
-        with serial.Serial(port, baudrate, timeout=1) as ser:
-            print("Connecting to the switch...")
-            ser.write(b'\r\n')  # Wake up the console
-            time.sleep(1)
-            ser.write(b'enable\r\n')
-            time.sleep(1)
-            ser.write(b'configure terminal\r\n')
-            time.sleep(1)
-            for line in config.split('\n'):
-                ser.write(line.encode('utf-8') + b'\r\n')
-                time.sleep(0.1)  # Adjust this if needed to avoid overruns
-            ser.write(b'end\r\n')
-            ser.write(b'write memory\r\n')
-            print("Configuration applied successfully.")
-    except serial.SerialException as e:
-        print(f"Error: {e}")
+def provision_switch():
+    hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key = prompt_user()
+    csv_filepath = find_csv_file(hostname)
+    vlan_data = read_csv_file(csv_filepath)
+    config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
+                                    model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
+
+    print("\nGenerated Configuration:\n")
+    print(config)
+    print("\nProvisioning switch...")
+
+    with serial.Serial(port, baudrate=9600, timeout=1) as ser:
+        ser.write(b'\n')
+        ser.write(b'\n')
+        ser.write(b'enable\n')
+        ser.write(enable_password.encode('ascii') + b'\n')
+        ser.write(b'configure terminal\n')
+        for line in config.split('\n'):
+            ser.write(line.encode('ascii') + b'\n')
+            time.sleep(0.1)  # Adding a small delay to ensure the command is processed
+
+    print("Provisioning complete.")
 
 if __name__ == "__main__":
-    (hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
-     description, first_ptp_address, second_ptp_address, ospf_message_key) = prompt_user()
-    try:
-        csv_filepath = find_csv_file(hostname)
-        vlan_data = read_csv_file(csv_filepath)
-        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
-                                        description, first_ptp_address, second_ptp_address, ospf_message_key)
-        send_configuration_to_switch(config, port=port)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    provision_switch()
