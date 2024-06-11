@@ -143,8 +143,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
     else:
         return ""
 
-def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
-                           model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key):
+def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data):
     config = f"""
     hostname {hostname}
     
