@@ -12,7 +12,16 @@ def prompt_user():
     ospf_num = input("Enter the OSPF number: ")
     tacacs_key = input("Enter the TACACS key: ")
     port = input("Enter the serial port (e.g., /dev/cu.usbserial-XXXX): ")
-    return hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port
+
+    # Additional inputs
+    description = input("Enter the description: ")
+    first_ptp_address = input("Enter the first point-to-point address: ")
+    second_ptp_address = input("Enter the second point-to-point address: ")
+    ospf_message_key = input("Enter the OSPF message key: ")
+
+    return (hostname, enable_password, admin_password, loopback_ip, ospf_num, 
+            tacacs_key, port, description, first_ptp_address, 
+            second_ptp_address, ospf_message_key)
 
 def find_csv_file(hostname):
     downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -27,65 +36,34 @@ def read_csv_file(filepath):
     return pd.read_csv(filepath)
 
 def generate_wildcard_mask(cidr):
-    # Extract the prefix length from CIDR notation
     prefix_length = int(cidr.split('/')[-1])
-
-    # Calculate the wildcard mask using the provided formula
     wildcard_mask = cidr_to_wildcard(cidr)
-
     return wildcard_mask
-
 
 def generate_subnet_mask(cidr):
-    # Calculate the subnet mask using the provided formula
     subnet_mask = cidr_to_subnet_mask(cidr)
-
     return subnet_mask
-
 
 def cidr_to_wildcard(subnet_mask):
-    # Extract the prefix length from CIDR notation
     prefix_length = int(subnet_mask.split('/')[-1])
-
-    # Calculate the subnet mask as a binary string
     subnet_mask_binary = '1' * prefix_length + '0' * (32 - prefix_length)
-
-    # Calculate the wildcard mask as the complement of the subnet mask
     wildcard_mask_binary = ''.join(['1' if bit == '0' else '0' for bit in subnet_mask_binary])
-
-    # Split the binary string into octets
     octets = [wildcard_mask_binary[i:i+8] for i in range(0, 32, 8)]
-
-    # Convert each octet to decimal
     wildcard_octets = [str(int(octet, 2)) for octet in octets]
-
-    # Join the wildcard octets into the wildcard mask
     wildcard_mask = '.'.join(wildcard_octets)
-
     return wildcard_mask
 
-
 def cidr_to_subnet_mask(cidr_notation):
-    # Split the CIDR notation into the IP address and the prefix length
     ip_address, prefix_length = cidr_notation.split('/')
     prefix_length = int(prefix_length)
-
-    # Calculate the subnet mask as a binary string
     subnet_mask_binary = '1' * prefix_length + '0' * (32 - prefix_length)
-
-    # Split the binary string into octets
     octets = [subnet_mask_binary[i:i+8] for i in range(0, 32, 8)]
-
-    # Convert each octet to decimal
     subnet_octets = [str(int(octet, 2)) for octet in octets]
-
-    # Join the subnet octets into the subnet mask
     subnet_mask = '.'.join(subnet_octets)
-
     return subnet_mask
 
-
-def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data):
+def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
+                           description, first_ptp_address, second_ptp_address, ospf_message_key):
     config = f"""
     hostname {hostname}
     
@@ -197,6 +175,26 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
 
     ^C
     """
+
+    config += f"""
+    Interface twe1/0/23
+    Desc {description}
+    No switchport
+    Ip address {first_ptp_address}
+    Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+    Ip ospf network point-to-point
+    No shut
+    Exit
+
+    Int twe2/0/23
+    Desc {description}
+    No switchport
+    Ip address {second_ptp_address}
+    Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
+    Ip ospf network point-to-point
+    Exit
+    """
+
     for index, row in vlan_data.iterrows():
         vlan_num = row['VLAN']
         description = row['Description']
@@ -245,12 +243,13 @@ def send_configuration_to_switch(config, port=None, baudrate=9600):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port  = prompt_user()
+    (hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
+     description, first_ptp_address, second_ptp_address, ospf_message_key) = prompt_user()
     try:
         csv_filepath = find_csv_file(hostname)
         vlan_data = read_csv_file(csv_filepath)
-        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data)
+        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, vlan_data,
+                                        description, first_ptp_address, second_ptp_address, ospf_message_key)
         send_configuration_to_switch(config, port=port)
     except FileNotFoundError as e:
         print(f"Error: {e}")
-
