@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import ipaddress
 
+
 def prompt_user():
     hostname = input("Enter the hostname for the switch: ")
     enable_password = input("Enter the enable password: ")
@@ -292,36 +293,36 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
 
 
 
-for index, row in vlan_data.iterrows():
-    vlan_num = row['VLAN']
-    description = row['Description']
-    network = row['Network']
-    gateway = row['Gateway']
-    size = row['New Network Size']
-    subnet_mask = generate_subnet_mask(size)
-    wildcard_mask = generate_wildcard_mask(size)
-    config += f"""
-    vlan {vlan_num}
-     name {description}
-    !
-    interface Vlan{vlan_num}
-     description {description}
-     ip address {gateway} {subnet_mask}
-     ip helper-address 165.91.16.135
-     ip helper-address 128.194.211.237
-     shutdown
-    exit
-    !
-    """
-    config += f"""
-    router ospf {ospf_num}
-    network {network} {wildcard_mask} area {ospf_num}
+    for index, row in vlan_data.iterrows():
+        vlan_num = row['VLAN']
+        description = row['Description']
+        network = row['Network']
+        gateway = row['Gateway']
+        size = row['New Network Size']
+        subnet_mask = generate_subnet_mask(size)
+        wildcard_mask = generate_wildcard_mask(size)
+        config += f"""
+        vlan {vlan_num}
+        name {description}
+        !
+        interface Vlan{vlan_num}
+        description {description}
+        ip address {gateway} {subnet_mask}
+        ip helper-address 165.91.16.135
+        ip helper-address 128.194.211.237
+        shutdown
+        exit
+        !
         """
+        config += f"""
+        router ospf {ospf_num}
+        network {network} {wildcard_mask} area {ospf_num}
+            """
 
-    # Add interface configurations based on model and stacked
-    config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
+        # Add interface configurations based on model and stacked
+        config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
 
-return config
+    return config
 
 
 
