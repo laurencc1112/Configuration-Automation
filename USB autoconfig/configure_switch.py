@@ -15,12 +15,12 @@ def prompt_user():
     port = input("Enter the serial port (e.g., /dev/cu.usbserial-XXXX): ")
     model = input("Select the switch model (1. 9500, 2. 9300): ")
     stacked = input("Is this a stacked switch? (yes/no): ")
-    description = input("Enter the description: ")
+    uplink_description = input("Enter the description: ")
     first_ptp_address = input("Enter the first point-to-point address: ")
     second_ptp_address = input("Enter the second point-to-point address: ")
     ospf_message_key = input("Enter the OSPF message key: ")
     return (hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
-            model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
+            model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key)
 
 def find_csv_file(hostname):
     downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -61,12 +61,12 @@ def cidr_to_subnet_mask(cidr_notation):
     subnet_mask = '.'.join(subnet_octets)
     return subnet_mask
 
-def generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key):
+def generate_interface_config(model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key):
     if model == "1":  # 9500
         if stacked.lower() == "yes":
             return f"""
             Interface twe1/0/23
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -75,7 +75,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
             Exit
 
             Int twe2/0/23
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -85,7 +85,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
         else:
             return f"""
             Interface twe1/0/23
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -94,7 +94,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
             Exit
 
             Int twe1/0/24
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -105,7 +105,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
         if stacked.lower() == "yes":
             return f"""
             Interface twe1/1/1
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -114,7 +114,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
             Exit
 
             Int twe2/1/1
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -124,7 +124,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
         else:
             return f"""
             Interface twe1/1/1
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -133,7 +133,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
             Exit
 
             Int twe1/1/2
-            Desc {description}
+            Desc {uplink_description}
             No switchport
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
@@ -143,7 +143,7 @@ def generate_interface_config(model, stacked, description, first_ptp_address, se
     else:
         return ""
 
-def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data):
+def generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data):
     config = f"""
     hostname {hostname}
     
@@ -316,10 +316,11 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
         config += f"""
         router ospf {ospf_num}
         network {network} {wildcard_mask} area {ospf_num}
-            """
+        exit
+    """
 
-        # Add interface configurations based on model and stacked
-        config += generate_interface_config(model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key)
+    # Add interface configurations based on model and stacked
+    config += generate_interface_config(model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key)
 
     return config
 
@@ -361,7 +362,7 @@ if __name__ == "__main__":
     try:
         csv_filepath = find_csv_file(hostname)
         vlan_data = read_csv_file(csv_filepath)
-        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data)
+        config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data)
         send_configuration_to_switch(config, port=port)
     except FileNotFoundError as e:
         print(f"Error: {e}")
