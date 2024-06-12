@@ -6,7 +6,7 @@ import ipaddress
 
 
 def prompt_user():
-    hostname = input("Enter the hostname for the switch: ")
+    bldg_acro = input("Enter the buildng acronym: ")
     enable_password = input("Enter the enable password: ")
     admin_password = input("Enter the admin password: ")
     loopback_ip = input("Enter the loopback IP address: ")
@@ -15,16 +15,18 @@ def prompt_user():
     port = input("Enter the serial port (e.g., /dev/cu.usbserial-XXXX): ")
     model = input("Select the switch model (1. 9500, 2. 9300): ")
     stacked = input("Is this a stacked switch? (yes/no): ")
-    uplink_description = input("Enter the description: ")
+    uplink_description = input("Enter the uplink description: ")
     first_ptp_address = input("Enter the first point-to-point address (enter the EVEN NUMERED address): ")
     second_ptp_address = input("Enter the second point-to-point address (enter the EVEN NUMERED address): ")
     ospf_message_key = input("Enter the OSPF message key: ")
-    return (hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
+    hostname = f"{bldg_acro}-1"
+    return (bldg_acro, hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port,
             model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key)
 
-def find_csv_file(hostname):
+
+def find_csv_file(bldg_acro):
     downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    csv_filename = f"{hostname}networks.csv"
+    csv_filename = f"{bldg_acro}-networks.csv"
     csv_filepath = os.path.join(downloads_folder, csv_filename)
     if os.path.exists(csv_filepath):
         return csv_filepath
@@ -71,6 +73,8 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
+            mtu 1500
+            ip pim sparse-mode
             No shut
             Exit
 
@@ -80,6 +84,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             router ospf {ospf_num}
@@ -98,6 +105,8 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
             No shut
+            mtu 1500
+            ip pim sparse-mode
             Exit
 
             Int twe1/0/24
@@ -106,6 +115,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             router ospf {ospf_num}
@@ -125,7 +137,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
-            No shut
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             Int twe2/1/1
@@ -134,6 +148,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             router ospf {ospf_num}
@@ -152,7 +169,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {first_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
-            No shut
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             Int twe1/1/2
@@ -161,6 +180,9 @@ def generate_interface_config(model, stacked, uplink_description, first_ptp_addr
             Ip address {second_ptp_address}
             Ip ospf message-digest-key 1 md5 7 {ospf_message_key}
             Ip ospf network point-to-point
+            mtu 1500
+            ip pim sparse-mode
+            no shut
             Exit
 
             router ospf {ospf_num}
@@ -185,6 +207,8 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
     no ip domain lookup
     ip ssh logging events
     ip ssh version 2
+
+    lldp run
     
     no service pad
     service timestamps debug datetime msec localtime
@@ -244,6 +268,9 @@ def generate_configuration(hostname, enable_password, admin_password, loopback_i
     description router-id, OSPF {ospf_num}
     ip address {loopback_ip} 255.255.255.255
     ip pim sparse-mode
+
+    router ospf {ospf_num}
+    network {loopback_ip} 0.0.0.0 area {ospf_num}
 
     aaa new-model
     aaa authentication login default group tacacs+ local
@@ -428,9 +455,9 @@ def send_configuration_to_switch(config, port=None, baudrate=9600):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, description, first_ptp_address, second_ptp_address, ospf_message_key  = prompt_user()
+    bldg_acro, hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, uplink_description, first_ptp_address, second_ptp_address, ospf_message_key  = prompt_user()
     try:
-        csv_filepath = find_csv_file(hostname)
+        csv_filepath = find_csv_file(bldg_acro)
         vlan_data = read_csv_file(csv_filepath)
         config = generate_configuration(hostname, enable_password, admin_password, loopback_ip, ospf_num, tacacs_key, port, model, stacked, first_ptp_address, second_ptp_address, ospf_message_key, vlan_data)
         send_configuration_to_switch(config, port=port)
