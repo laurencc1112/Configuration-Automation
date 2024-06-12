@@ -81,12 +81,13 @@ interface twe1/0/23
  no shut
  exit
 
-int twe2/0/23
+interface twe2/0/23
  desc {uplink_description}
  no switchport
  ip address {second_ptp_address} 255.255.255.254
  ip ospf message-digest-key 1 md5 7 {ospf_message_key}
  ip ospf network point-to-point
+ no shut
  exit
 
 router ospf {ospf_num}
@@ -106,12 +107,13 @@ interface twe1/0/23
  no shut
  exit
 
-int twe1/0/24
+interface twe1/0/24
  desc {uplink_description}
  no switchport
  ip address {second_ptp_address} 255.255.255.254
  ip ospf message-digest-key 1 md5 7 {ospf_message_key}
  ip ospf network point-to-point
+ no shut
  exit
 
 router ospf {ospf_num}
@@ -132,12 +134,13 @@ interface twe1/1/1
  no shut
  exit
 
-int twe2/1/1
+interface twe2/1/1
  desc {uplink_description}
  no switchport
  ip address {second_ptp_address} 255.255.255.254
  ip ospf message-digest-key 1 md5 7 {ospf_message_key}
  ip ospf network point-to-point
+ no shut
  exit
 
 router ospf {ospf_num}
@@ -157,12 +160,13 @@ interface twe1/1/1
  no shut
  exit
 
-int twe1/1/2
+interface twe1/1/2
  desc {uplink_description}
  no switchport
  ip address {second_ptp_address} 255.255.255.254
  ip ospf message-digest-key 1 md5 7 {ospf_message_key}
  ip ospf network point-to-point
+ no shut
  exit
 
 router ospf {ospf_num}
